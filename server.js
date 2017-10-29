@@ -7,7 +7,7 @@ const routes = require('./src/api/index.js');
 const ingest = require('./src/middleware/vtc.ingester');
 
 Server.connection({
-	host: '127.0.0.1',
+	host: '192.168.0.5',
 	port: 3001
 });
 

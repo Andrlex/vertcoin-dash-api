@@ -5,7 +5,7 @@ const moment = require('moment');
 
 const getData = function (request, reply)
 {
-	let response = {};
+	let response = { recent: { }, day: { }, hour: { }, week: { } };
 
 	Redis.hmget([
 		'coin:vert',
@@ -14,12 +14,45 @@ const getData = function (request, reply)
 		'hashpersec',
 		'lastupdated'], (err, obj) =>
 	{
-		response.difficulty = obj[0];
-		response.blockHeight = obj[1];
-		response.hashPerSec = obj[2];
+		response.recent.difficulty = obj[0];
+		response.recent.blockHeight = obj[1];
+		response.recent.hashPerSec = Number(obj[2] / 1000000000);
 		response.lastUpdated = obj[3];
 
-		reply(response);
+		Redis.hmget([
+			'coin:vert:hour',
+			'difficulty',
+			'blockheight',
+			'hashpersec'], (err, obj) =>
+		{
+			response.hour.difficulty = obj[0];
+			response.hour.blockHeight = obj[1];
+			response.hour.hashPerSec = Number(obj[2] / 1000000000);
+
+			Redis.hmget([
+				'coin:vert:day',
+				'difficulty',
+				'blockheight',
+				'hashpersec'], (err, obj) =>
+			{
+				response.day.difficulty = obj[0];
+				response.day.blockHeight = obj[1];
+				response.day.hashPerSec = Number(obj[2] / 1000000000);
+
+				Redis.hmget([
+					'coin:vert:week',
+					'difficulty',
+					'blockheight',
+					'hashpersec'], (err, obj) =>
+				{
+					response.week.difficulty = obj[0];
+					response.week.blockHeight = obj[1];
+					response.week.hashPerSec = Number(obj[2] / 1000000000);
+
+					reply(response);
+				});
+			});
+		});
 	});
 };
 

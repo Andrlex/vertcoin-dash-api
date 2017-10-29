@@ -13,10 +13,10 @@ const routes = function ()
 		return {
 			method: 'GET',
 			path: '/api/chain',
-			handler: vtcAggregateController.getData(),
+			handler: vtcAggregateController.getData,
 			config: {
 				cors: {
-					origin: '*'
+					origin: ['*']
 				}
 			}
 		};
