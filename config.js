@@ -6,7 +6,7 @@ const init = function (process)
 {
 	let config = {};
 
-	if (process[2] && process[2] === 'live')
+	if (process.argv[2] && process.argv[2] === 'live')
 	{
 		config = require('./config/config.live.json');
 		config.server.tls = {
