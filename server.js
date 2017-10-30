@@ -8,23 +8,16 @@ const Path = require('path');
 
 const routes = require('./src/api/index.js');
 const ingest = require('./src/middleware/vtc.ingester');
+const config = require('./config.js').init(process);
 
-let tls = {
-	key: fs.readFileSync('/etc/ssl/vertcoin-dashboard.com.key'),
-	cert: fs.readFileSync('/etc/ssl/vertcoin-dashboard_com.crt')
-};
-
-Server.connection({
-	host: '54.37.64.232',
-	port: 443,
-	tls: tls
-});
+Server.connection(config.server);
 
 Server.start((err) =>
 {
 	if (err)
 		throw err;
 
+	console.log(config.server);
 	console.log('Server running..');
 
 	ingest.startIngest();
@@ -41,7 +34,7 @@ Server.register([
 		throw err;
 
 	Server.route({
-		method: '/GET',
+		method: 'GET',
 		path: '/{path*}',
 		handler: {
 			directory: {
