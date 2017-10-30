@@ -17,7 +17,6 @@ Server.start((err) =>
 	if (err)
 		throw err;
 
-	console.log(config.server);
 	console.log('Server running..');
 
 	ingest.startIngest();
