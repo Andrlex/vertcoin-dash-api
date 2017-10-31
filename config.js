@@ -12,7 +12,12 @@ const init = function (process)
 		config.server.tls = {
 			key: fs.readFileSync('/etc/ssl/vertcoin-dashboard.com.key'),
 			cert: fs.readFileSync('/etc/ssl/vertcoin-dashboard_com.crt')
-		}
+		};
+
+		config.http = {
+			host: config.server.host,
+			port: 80
+		};
 	}
 	else
 	{
