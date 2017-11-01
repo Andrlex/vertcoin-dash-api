@@ -19,9 +19,48 @@ let intervals = {
 const startIngest = () =>
 {
 	aggregateData();
+	timeTillBlockHalving();
 	updateAggregateAtInterval(intervals.hour, 'hour');
 	updateAggregateAtInterval(intervals.day, 'day');
 	updateAggregateAtInterval(intervals.week, 'week');
+};
+
+const timeTillBlockHalving = () =>
+{
+	setInterval(() =>
+	{
+
+		Redis.hmget([
+			'coin:vert:week',
+			'blockheight',
+			'lastupdated'], (err, obj) =>
+		{
+			let weekHeight = obj[0],
+				lastUpdated = moment.unix(obj[1]),
+				minutesAgo = moment().diff(lastUpdated, 'minutes'),
+				daysAgoUpdated = (minutesAgo / 60) / 24;
+
+			Redis.hmget([
+				'coin:vert',
+				'blockheight'], (err, obj) =>
+			{
+				let currentHeight = obj[0];
+
+				let blocksClimbedAverage = (currentHeight - weekHeight) / daysAgoUpdated,
+					blocksToGo = ((currentHeight > 840000 ? 1680000 : 840000) - currentHeight),
+					estimatedDaysUntilNext = blocksToGo / blocksClimbedAverage;
+
+				Redis.hmset('coin:vert',
+					'nextblockhalve', (estimatedDaysUntilNext * 24),(err, obj) => {
+
+						if (err)
+							throw err;
+
+					});
+			});
+		});
+
+	}, 10000);
 };
 
 const aggregateData = () =>
@@ -98,7 +137,8 @@ const updateAggregateAtInterval = (interval, type) =>
 			Redis.hmset('coin:vert:' + type,
 				'difficulty', response[0],
 				'blockheight', response[1],
-				'hashpersec', response[2], (err, obj) =>
+				'hashpersec', response[2],
+				'lastupdated', moment().unix().toString(), (err, obj) =>
 				{
 					if (err)
 						throw err;

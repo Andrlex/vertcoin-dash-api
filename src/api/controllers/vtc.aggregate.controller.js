@@ -12,12 +12,14 @@ const getData = function (request, reply)
 		'difficulty',
 		'blockheight',
 		'hashpersec',
-		'lastupdated'], (err, obj) =>
+		'lastupdated',
+		'nextblockhalve'], (err, obj) =>
 	{
 		response.recent.difficulty = obj[0];
 		response.recent.blockHeight = obj[1];
 		response.recent.hashPerSec = Number(obj[2] / 1000000000);
 		response.lastUpdated = obj[3];
+		response.timeTillHalve = obj[4];
 
 		Redis.hmget([
 			'coin:vert:hour',
