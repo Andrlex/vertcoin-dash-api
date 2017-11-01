@@ -25,6 +25,7 @@ let updates = {
  */
 const startIngest = () =>
 {
+	getIntervals('minute');
 	getIntervals('day');
 	getIntervals('hour');
 	getIntervals('week');
@@ -49,7 +50,9 @@ const getIntervals = (type) =>
 			timeIntoInterval = (secondsAgo * 1000);
 
 		if (intervals[type] - timeIntoInterval <= 0)
+		{
 			updates[type] = updateAggregateAtInterval(0, type);
+		}
 		else
 			updates[type] = updateAggregateAtInterval(intervals[type] - timeIntoInterval, type);
 
@@ -159,6 +162,8 @@ const updateAggregateAtInterval = (interval, type) =>
 
 	return setInterval(() =>
 	{
+		clearInterval(updates[type]);
+
 		Bluebird.map(apiUrls, (url) =>
 		{
 			return Request.getAsync(url).spread((response, body) =>
@@ -177,7 +182,6 @@ const updateAggregateAtInterval = (interval, type) =>
 						throw err;
 
 					console.log('computing ' + type + ' update');
-					clearInterval(updates[type]);
 					resetInterval(type);
 				});
 
