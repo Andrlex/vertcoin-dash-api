@@ -25,7 +25,6 @@ let updates = {
  */
 const startIngest = () =>
 {
-	getIntervals('minute');
 	getIntervals('day');
 	getIntervals('hour');
 	getIntervals('week');
