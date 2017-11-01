@@ -14,15 +14,48 @@ let intervals = {
 	week: 604800000
 };
 
+let updates = {
+	minute: {},
+	hour: {},
+	day: {},
+	week: {}
+};
+
 /**
  */
 const startIngest = () =>
 {
+	getIntervals('day');
+	getIntervals('hour');
+	getIntervals('week');
 	aggregateData();
 	timeTillBlockHalving();
-	updateAggregateAtInterval(intervals.hour, 'hour');
-	updateAggregateAtInterval(intervals.day, 'day');
-	updateAggregateAtInterval(intervals.week, 'week');
+};
+
+const resetInterval = (type) =>
+{
+	console.log('resetting ' + type + ' update interval');
+	updates[type] = updateAggregateAtInterval(intervals[type], type);
+};
+
+const getIntervals = (type) =>
+{
+	Redis.hmget([
+		'coin:vert:' + type,
+		'lastupdated'], (err, obj) =>
+	{
+		let lastUpdated = moment.unix(obj[0]),
+			secondsAgo = moment().diff(lastUpdated, 'seconds'),
+			timeIntoInterval = (secondsAgo * 1000);
+
+		if (intervals[type] - timeIntoInterval <= 0)
+			updates[type] = updateAggregateAtInterval(0, type);
+		else
+			updates[type] = updateAggregateAtInterval(intervals[type] - timeIntoInterval, type);
+
+		console.log(intervals[type] - timeIntoInterval + ' ms');
+		console.log(type + ' update will take place in ' + (((((intervals[type] - timeIntoInterval) / 1000) / 60) / 60) / 24) + ' days');
+	});
 };
 
 const timeTillBlockHalving = () =>
@@ -124,7 +157,7 @@ const updateAggregateAtInterval = (interval, type) =>
 		'https://explorer.vertcoin.org/api/getblockcount',
 		'https://explorer.vertcoin.org/api/getnetworkhashps'];
 
-	setInterval(() =>
+	return setInterval(() =>
 	{
 		Bluebird.map(apiUrls, (url) =>
 		{
@@ -143,7 +176,9 @@ const updateAggregateAtInterval = (interval, type) =>
 					if (err)
 						throw err;
 
-					console.log(obj);
+					console.log('computing ' + type + ' update');
+					clearInterval(updates[type]);
+					resetInterval(type);
 				});
 
 		}).catch((err) => {
