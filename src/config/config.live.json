@@ -1,0 +1,10 @@
+{
+  "server": {
+    "host": "54.37.64.232",
+    "port": 443,
+    "tls": {
+      "key": "/etc/ssl/vertcoin-dashboard.com.key",
+      "cert": "/etc/ssl/vertcoin-dashboard_com.crt"
+    }
+  }
+}

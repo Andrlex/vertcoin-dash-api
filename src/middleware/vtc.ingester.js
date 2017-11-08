@@ -8,26 +8,49 @@ const Request = Bluebird.promisifyAll(require('request'), {multiArgs: true});
 const moment = require('moment');
 
 let intervals = {
-	minute: 60000,
-	hour: 3600000,
-	day: 86400000,
-	week: 604800000
-};
-
-let updates = {
-	minute: {},
-	hour: {},
-	day: {},
-	week: {}
+	minute: {
+		iterations: 1,
+		interval: 60000,
+		obj: {}
+	},
+	hour: {
+		iterations: 1,
+		interval: 3600000,
+		obj: {}
+	},
+	day: {
+		iterations: 1,
+		interval: 86400000,
+		obj: {}
+	},
+	week: {
+		iterations: 1,
+		interval: 604800000,
+		obj: {}
+	},
+	month: {
+		iterations: 4,
+		interval: 604800000,
+		obj: {}
+	},
+	year: {
+		iterations: 52,
+		interval: 604800000,
+		obj: {}
+	}
 };
 
 /**
  */
 const startIngest = () =>
 {
+	getIntervals('minute');
 	getIntervals('day');
 	getIntervals('hour');
 	getIntervals('week');
+	getIntervals('month');
+	getIntervals('year');
+
 	aggregateData();
 	timeTillBlockHalving();
 };
@@ -35,7 +58,8 @@ const startIngest = () =>
 const resetInterval = (type) =>
 {
 	console.log('resetting ' + type + ' update interval');
-	updates[type] = updateAggregateAtInterval(intervals[type], type);
+	intervals[type].obj = updateAggregateAtInterval(intervals[type].interval, type);
+
 };
 
 const getIntervals = (type) =>
@@ -48,15 +72,13 @@ const getIntervals = (type) =>
 			secondsAgo = moment().diff(lastUpdated, 'seconds'),
 			timeIntoInterval = (secondsAgo * 1000);
 
-		if (intervals[type] - timeIntoInterval <= 0)
-		{
-			updates[type] = updateAggregateAtInterval(0, type);
-		}
+		if (intervals[type].interval - timeIntoInterval <= 0)
+			intervals[type].obj = updateAggregateAtInterval(0, type);
 		else
-			updates[type] = updateAggregateAtInterval(intervals[type] - timeIntoInterval, type);
+			intervals[type].obj = updateAggregateAtInterval(intervals[type].interval - timeIntoInterval, type);
 
-		console.log(intervals[type] - timeIntoInterval + ' ms');
-		console.log(type + ' update will take place in ' + (((((intervals[type] - timeIntoInterval) / 1000) / 60) / 60) / 24) + ' days');
+		console.log(type + ' update will take place in ' + ((((((intervals[type].interval - timeIntoInterval) / 1000) / 60) / 60) / 24) * intervals[type].iterations) + ' days');
+
 	});
 };
 
@@ -86,7 +108,7 @@ const timeTillBlockHalving = () =>
 					estimatedDaysUntilNext = blocksToGo / blocksClimbedAverage;
 
 				Redis.hmset('coin:vert',
-					'nextblockhalve', (estimatedDaysUntilNext * 24),(err, obj) => {
+					'nextblockhalve', (estimatedDaysUntilNext * 24), (err, obj) => {
 
 						if (err)
 							throw err;
@@ -95,7 +117,7 @@ const timeTillBlockHalving = () =>
 			});
 		});
 
-	}, 10000);
+	}, 30000);
 };
 
 const aggregateData = () =>
@@ -116,7 +138,6 @@ const aggregateData = () =>
 		{
 			let setData = true;
 
-			// Set flag based on if the data has changed
 			Redis.hmget([
 				'coin:vert',
 				'difficulty',
@@ -150,7 +171,7 @@ const aggregateData = () =>
 		{
 			console.log(err);
 		});
-	}, intervals.minute);
+	}, intervals.minute.interval);
 };
 
 const updateAggregateAtInterval = (interval, type) =>
@@ -161,32 +182,63 @@ const updateAggregateAtInterval = (interval, type) =>
 
 	return setInterval(() =>
 	{
-		clearInterval(updates[type]);
+		clearInterval(intervals[type].obj);
 
-		Bluebird.map(apiUrls, (url) =>
+		Redis.hmget([
+			'coin:vert:' + type,
+			'iterations'], (err, obj) =>
 		{
-			return Request.getAsync(url).spread((response, body) =>
-			{
-				return JSON.parse(body);
-			});
-		}).then((response) =>
-		{
+			if (err)
+				return false;
+
+			let currentIterations = obj[0],
+				iterationsValue = (currentIterations > 0) ? (currentIterations - 1) : intervals[type].iterations;
+
 			Redis.hmset('coin:vert:' + type,
-				'difficulty', response[0],
-				'blockheight', response[1],
-				'hashpersec', response[2],
-				'lastupdated', moment().unix().toString(), (err, obj) =>
-				{
-					if (err)
-						throw err;
+				'iterations', iterationsValue, (err, obj) => {
 
-					console.log('computing ' + type + ' update');
+					if (err)
+					{
+						intervals[type].obj = null;
+						console.log('killed interval ' + type);
+
+						throw err;
+					}
+
+					console.log('updated iterations of ' + type + ' to ' + iterationsValue);
+
+					if (iterationsValue === 0)
+					{
+						Bluebird.map(apiUrls, (url) => {
+							return Request.getAsync(url).spread((response, body) => {
+								return JSON.parse(body);
+							});
+						}).then((response) => {
+							Redis.hmset('coin:vert:' + type,
+								'difficulty', response[0],
+								'blockheight', response[1],
+								'hashpersec', response[2],
+								'lastupdated', moment().unix().toString(), (err, obj) => {
+									if (err) {
+										intervals[type].obj = null;
+										console.log('killed interval ' + type);
+
+										throw err;
+									}
+
+									console.log('computing ' + type + ' update');
+								});
+
+						}).catch((err) => {
+							console.log(err);
+						});
+					}
+
 					resetInterval(type);
 				});
-
-		}).catch((err) => {
-			console.log(err);
 		});
+
+
 	}, interval);
 };
 
