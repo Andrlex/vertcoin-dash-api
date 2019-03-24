@@ -11,28 +11,29 @@ const routes = require('./src/api/index.js');
 const ingest = require('./src/middleware/vtc.ingester');
 const config = require('./config.js').init(process);
 
-Server.connection(config.server);
-
 // if we've created a secure connection, listen on port 80 as well
 if (config.server.tls)
 {
 	Server.connection({port: 80});
 
+	// redirect any http request to https
 	Server.ext('onRequest', (request, reply) => {
 
-		if (request.connection.info.port !== 443) {
+		if (request.connection.info.port !== config.server.port) {
 
 			return reply.redirect(Url.format({
 				protocol: 'https',
 				hostname: request.info.hostname,
 				pathname: request.url.path,
-				port: 443
+				port: config.server.port
 			}));
 		}
 
 		return reply.continue();
 	});
 }
+
+Server.connection(config.server);
 
 Server.start((err) =>
 {

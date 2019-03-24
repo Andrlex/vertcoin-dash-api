@@ -3,6 +3,7 @@
 const _ = require('lodash');
 const Bluebird = require('bluebird');
 const Redis = require('../middleware/database').client;
+const vertcoin = require('node-vertcoin/lib');
 const Request = Bluebird.promisifyAll(require('request'), {multiArgs: true});
 
 const moment = require('moment');
@@ -44,14 +45,15 @@ let intervals = {
  */
 const startIngest = () =>
 {
-	getIntervals('minute');
-	getIntervals('day');
-	getIntervals('hour');
-	getIntervals('week');
-	getIntervals('month');
-	getIntervals('year');
-
-	aggregateData();
+	aggregateNodeData();
+	// getIntervals('minute');
+	// getIntervals('day');
+	// getIntervals('hour');
+	// getIntervals('week');
+	// getIntervals('month');
+	// getIntervals('year');
+	//
+	// aggregateData();
 	timeTillBlockHalving();
 };
 
@@ -120,6 +122,66 @@ const timeTillBlockHalving = () =>
 	}, 30000);
 };
 
+const aggregateNodeData = () =>
+{
+	let client = new vertcoin.Client({
+		host: 'localhost',
+		port: 5888,
+		user: 'rpc',
+		pass: 's0p3rs3cr3t'
+	});
+
+	let aggregatedData =
+		{
+			nodeCount: 'getconnectioncount',
+			miningInfo: 'getmininginfo'
+		};
+
+	setInterval(() =>
+	{
+		let ds = [];
+
+		_.forOwn(aggregatedData, function (value, key)
+		{
+			client.cmd(aggregatedData[key], function(err, response)
+			{
+				// only propagate results if they're all defined
+				if (response !== undefined)
+				{
+					ds.push({type: key, data: response});
+
+					if (ds.length === Object.keys(aggregatedData).length)
+						saveAggregatedData(ds);
+				}
+				else
+					console.log('undefined value found for' + key);
+			});
+		});
+	}, (intervals.minute.interval));
+
+};
+
+const saveAggregatedData = (data) =>
+{
+	if (data[1].data.difficulty === undefined || data[1].data.networkhashps === undefined ||
+		data[1].data.blocks === undefined)
+	{
+		console.log('undefined values found');
+		return;
+	}
+
+	Redis.hmset('coin:vert',
+		'difficulty', data[1].data.difficulty,
+		'blockheight', data[1].data.blocks,
+		'hashpersec', data[1].data.networkhashps,
+		'lastupdated', moment().unix().toString(), (err, obj) => {
+			if (err)
+				throw err;
+
+			console.log(obj);
+		});
+};
+
 const aggregateData = () =>
 {
 	let apiUrls = ['https://explorer.vertcoin.org/api/getdifficulty',
@@ -171,7 +233,7 @@ const aggregateData = () =>
 		{
 			console.log(err);
 		});
-	}, intervals.minute.interval);
+	}, 3000);
 };
 
 const updateAggregateAtInterval = (interval, type) =>

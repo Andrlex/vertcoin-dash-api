@@ -17,7 +17,7 @@ const init = function (process)
 			'www.vertcoin-dashboard.co.uk': tls.createSecureContext({
 				key: fs.readFileSync('/etc/ssl/vertcoin-dashboard.co.uk.key', 'utf8'),
 				cert: fs.readFileSync('/etc/ssl/vertcoin-dashboard_co_uk.crt', 'utf8')
-			}),
+			})
 		};
 
 		config.server.tls = {
@@ -33,8 +33,8 @@ const init = function (process)
 					throw new Error('No keys/certificates for domain requested');
 				}
 			},
-			key: fs.readFileSync('/etc/ssl/vertcoin-dashboard.com.key', 'utf-8'),
-			cert: fs.readFileSync('/etc/ssl/vertcoin-dashboard_com.crt', 'utf-8'),
+			key: fs.readFileSync('/etc/ssl/vertcoin-dashboard.co.uk.key', 'utf-8'),
+			cert: fs.readFileSync('/etc/ssl/vertcoin-dashboard_co_uk.crt', 'utf-8'),
 		};
 	}
 	return config;

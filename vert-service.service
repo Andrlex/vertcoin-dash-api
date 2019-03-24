@@ -1,0 +1,15 @@
+[Unit]
+Description=My Miscellaneous Service
+After=network.target
+
+[Service]
+Type=simple
+# Another Type option: forking
+User=root
+WorkingDirectory=/home/vertcoin-dashboard/vertcoin-dash-api
+ExecStart=/usr/bin/node /home/vertcoin-dashboard/vertcoin-dash-api/server.js
+Restart=always
+# Other Restart options: or always, on-abort, etc
+
+[Install]
+WantedBy=multi-user.target

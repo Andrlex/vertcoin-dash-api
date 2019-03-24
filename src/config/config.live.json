@@ -1,6 +1,6 @@
 {
   "server": {
-    "host": "54.37.64.232",
+    "host": "31.220.54.16",
     "port": 443,
     "tls": {
       "key": "/etc/ssl/vertcoin-dashboard.com.key",
