@@ -1,10 +1,10 @@
 [Unit]
-Description=My Miscellaneous Service
+Description=Vertcoin API/UI
 After=network.target
 
 [Service]
 Type=simple
-# Another Type option: forking
+Environment=NODE_ENV=live
 User=root
 WorkingDirectory=/home/vertcoin-dashboard/vertcoin-dash-api
 ExecStart=/usr/bin/node /home/vertcoin-dashboard/vertcoin-dash-api/server.js
